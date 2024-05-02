@@ -1,0 +1,10 @@
+# Local Mac
+.DS_Store
+
+# Rust
+debug/
+target/
+
+Cargo.lock
+
+**/*.rs.bk
