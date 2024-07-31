@@ -1,0 +1,27 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "cargo build basic",
+            "type": "shell",
+            "command": "cargo",
+            "args": ["build", "--features", "basic"],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": ["$rustc"]
+        },
+        {
+            "label": "cargo build colors256",
+            "type": "shell",
+            "command": "cargo",
+            "args": ["build", "--features", "truecolor"],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": ["$rustc"]
+        }
+    ]
+}

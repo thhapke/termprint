@@ -1,7 +1,7 @@
 mod termprint;
 pub use termprint::*;
 
-pub mod graph;
+// pub mod graph;
 
 #[cfg(test)]
 mod tests {
