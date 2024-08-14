@@ -14,5 +14,6 @@ time = "0.3.36"
 
 [features]
 basic = []
-truecolor = []
-mono =[]
+truecolors = []
+colors256 = []
+mono = []

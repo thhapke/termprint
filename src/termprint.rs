@@ -1,14 +1,15 @@
 use std::fmt;
 
-use colored::{Colorize,ColoredString};
+use colored::{Colorize, Color,ColoredString};
 use time::OffsetDateTime;
-// use serde::Serialize;
-// use serde_json::json;
+use std::collections::HashMap;
 
 pub const LONG: usize = 120;
 pub const MEDIUM: usize = 80;
 pub const SHORT: usize = 30;
 pub const SPACE: usize = 3;
+pub const STD_WIDTH: usize = 20;
+pub const RESET: &str = "\x1b[0m";
 
 trait ColoredItem {
     fn cinfo(&self) -> ColoredString;
@@ -22,6 +23,7 @@ trait ColoredItem {
     fn column(&self,index:usize) -> ColoredString;
 }
 
+#[cfg(any(feature = "truecolors", feature = "colors256"))]
 pub const COLUMN_COLORS: [(u8, u8, u8); 10] = [
     (255, 0, 0),    // Red
     (0, 255, 0),    // Green
@@ -35,6 +37,24 @@ pub const COLUMN_COLORS: [(u8, u8, u8); 10] = [
     (128, 128, 0),  // Olive
 ];
 
+#[cfg(feature = "mono")]
+pub const COLUMN_COLORS: [(u8, u8, u8); 3] = [
+    (75, 75, 75),    
+    (150, 150, 150),   
+    (255, 255, 255),    
+];
+
+#[cfg(feature = "basic")]
+pub const COLUMN_COLORS: [Color; 7] = [
+    Color::White,        
+    Color::Blue,  
+    Color::Green,
+    Color::Yellow,
+    Color::Blue,
+    Color::Magenta,
+    Color::Cyan,
+];
+
 #[cfg(feature = "basic")]
 impl ColoredItem for &str {
     fn cinfo(&self) -> ColoredString {
@@ -42,35 +62,36 @@ impl ColoredItem for &str {
     }
 
     fn cvar(&self) -> ColoredString {
-        self.cyan()
+        self.bright_cyan()
     }
 
     fn ctitle(&self) -> ColoredString {
         self.bold().blue()
     }
 
-    // fn cheader(&self) -> ColoredString {
-    //     self.italic().blue()
-    // }
-
     fn cerror(&self) -> ColoredString {
-        self.red().bold()
+        self.bright_red().bold()
     }
 
     fn cwarning(&self) -> ColoredString {
-        self.yellow()
+        self.bright_yellow()
     }
 
     fn citem(&self) -> ColoredString {
-        self.cyan()
+        self.bright_cyan()
     }
 
     fn cline(&self) -> ColoredString {
         self.blue()
     }
+
+    fn column(&self,index:usize) -> ColoredString {
+        let col_color = COLUMN_COLORS[index % COLUMN_COLORS.len()];
+        self.color(col_color)
+    }
 }
 
-#[cfg(feature = "truecolor")]
+#[cfg(feature = "colors256")]
 impl ColoredItem for &str {
     fn cinfo(&self) -> ColoredString {
         self.truecolor(51, 102, 255) 
@@ -84,9 +105,42 @@ impl ColoredItem for &str {
         self.truecolor(51, 102, 255) 
     }
 
-    // fn cheader(&self) -> ColoredString {
-    //     self.italic().truecolor(51, 102, 255)  
-    // }
+    fn cerror(&self) -> ColoredString {
+        self.bold().truecolor(255, 0, 0) 
+    }
+
+    fn cwarning(&self) -> ColoredString {
+        self.truecolor(255, 255, 85) 
+    }
+
+    fn citem(&self) -> ColoredString {
+        self.truecolor(0, 255, 255) 
+    }
+
+    fn cline(&self) -> ColoredString {
+        self.truecolor(51, 102, 255) 
+    }
+
+    fn column(&self,index:usize) -> ColoredString {
+        let color = COLUMN_COLORS[index % COLUMN_COLORS.len()];
+        self.truecolor(color.0, color.1, color.2)
+    }
+}
+
+
+#[cfg(feature = "truecolors")]
+impl ColoredItem for &str {
+    fn cinfo(&self) -> ColoredString {
+        self.truecolor(51, 102, 255) 
+    }
+
+    fn cvar(&self) -> ColoredString {
+        self.truecolor(0, 255, 255) 
+    }
+
+    fn ctitle(&self) -> ColoredString {
+        self.truecolor(51, 102, 255) 
+    }
 
     fn cerror(&self) -> ColoredString {
         self.bold().truecolor(255, 0, 0) 
@@ -125,10 +179,6 @@ impl ColoredItem for &str {
         self.white()
     }
 
-    // fn cheader(&self) -> ColoredString {
-    //     self.italic().white() 
-    // }
-
     fn cerror(&self) -> ColoredString {
         self.bold().white()
     }
@@ -144,45 +194,10 @@ impl ColoredItem for &str {
     fn cline(&self) -> ColoredString {
         self.white()
     }
-}
-
-impl ColoredItem for String {
-    fn cinfo(&self) -> ColoredString {
-        self.as_str().cinfo()
-    }
-
-    fn cvar(&self) -> ColoredString {
-        self.as_str().cvar()
-    }
-
-    fn ctitle(&self) -> ColoredString {
-        self.as_str().ctitle()
-    }
-
-    // fn cheader(&self) -> ColoredString {
-    //     self.as_str().cheader()
-    // }
-
-    fn cerror(&self) -> ColoredString {
-        self.as_str().cerror()
-    }
-
-    fn cwarning(&self) -> ColoredString {
-        self.as_str().cwarning()
-    }
-
-    fn citem(&self) -> ColoredString {
-        self.as_str().citem()
-    }
-
-    fn cline(&self) -> ColoredString {
-        self.as_str().cline()
-    }
-
     fn column(&self,index:usize) -> ColoredString {
-        self.as_str().column(index)
+        let color = COLUMN_COLORS[index % COLUMN_MONO_COLORS.len()];
+        self.truecolor(color.0, color.1, color.2)
     }
-
 }
 
 pub fn index2rgb(index: usize) -> (u8, u8, u8) {
@@ -218,6 +233,33 @@ pub fn index2rgb(index: usize) -> (u8, u8, u8) {
     }
 }
 
+pub fn get_terminal_type() -> String {
+    let term = std::env::var("TERM").unwrap_or_else(|_| "unknown".to_string());
+    term
+}
+
+pub fn print_terminal_type() {
+    let term = get_terminal_type();
+    print_double_line(None);
+    print_info("Terminal type", &term, None);
+    print_double_line(None);   
+    println!();
+}
+
+pub fn print_all_colors() {
+    print_title("All Clorored Colors");
+    println!("{} {}", "Black".black(), "Bright Black".bright_black());
+    println!("{} {}", "Red".red(), "Bright Red".bright_red());
+    println!("{} {}", "Green".green(), "Bright Green".bright_green());
+    println!("{} {}", "Yellow".yellow(), "Bright Yellow".bright_yellow());
+    println!("{} {}", "Blue".blue(), "Bright Blue".bright_blue());  
+    println!("{} {}", "Magenta".magenta(), "Bright Magenta".bright_magenta());
+    println!("{} {}", "Cyan".cyan(), "Bright Cyan".bright_cyan());
+    println!("{} {}", "White".white(), "Bright White".bright_white());
+    println!();
+
+
+}
 
 pub fn print_index2rgb() {
     print_message("\nColor index to rgb:");
@@ -241,15 +283,6 @@ pub fn print_index2rgb() {
             println!();
         }
     }
-}
-
-pub fn key_value(key: &str, value: &str, width: Option<usize>) -> String {
-    let w: usize = width.unwrap_or(key.len());
-    format!("{:w$}: {}",key.cinfo(),value.cvar())
-}
-
-pub fn print_key_value(key: &str, value: &str, width: Option<usize>) {
-    println!("{}",key_value(key,value,width));
 }
 
 pub fn error(message: &str, info: Option<&str>, err_msg: Option<&str>) -> String {
@@ -276,7 +309,7 @@ pub fn print_warning(msg: &str)  {
 
 pub fn info(key: &str, value: &str, width: Option<usize>) -> String {
     let w: usize = width.unwrap_or(key.len());
-    format!("{:w$}{}",key.cinfo(),value.cvar())
+    format!("{:w$}: {}",key.cinfo(),value.cvar())
 }
 
 pub fn print_info(key: &str, value: &str, width: Option<usize>) {
@@ -298,8 +331,10 @@ pub fn print_message(txt: &str)  {
     println!("{}",message(txt));
 }
 
-pub fn write_msg(f: &mut fmt::Formatter,txt: &str)  {
-    writeln!(f,"{}",message(txt)).unwrap()
+pub fn write_message(f: &mut fmt::Formatter,txt: &str)  {
+    if let Err(e) = writeln!(f,"{}",message(txt)) { 
+        print_error("Error write",Some(&"write_info".to_string()),Some(&e.to_string()))
+    };
 }
 
 pub fn title(msg: &str) -> String {
@@ -309,8 +344,8 @@ pub fn title(msg: &str) -> String {
 pub fn print_title(msg: &str)  {
     println!("{}",title(msg))
 }
-pub fn write_title(f: &mut fmt::Formatter,msg: &str) -> Result<(), std::fmt::Error> {
-    writeln!(f,"{}",title(msg))
+pub fn write_title(f: &mut fmt::Formatter,msg: &str)  {
+    writeln!(f,"{}",title(msg)).unwrap()
 }
 
 pub fn line(length: Option<usize>) -> String {
@@ -345,32 +380,77 @@ pub fn write_double_line(f: &mut fmt::Formatter,length: Option<usize>) {
 
 pub fn print_map <T: std::fmt::Display> (title: &str,val: &str, map: T ) {
     print_line(Some(MEDIUM));
-    print_key_value(title, val , None);
+    print_info(title, val , None);
     print_line(Some(MEDIUM));
     println!("{}",map);
     print_line(Some(MEDIUM));
 }
 
-pub fn print_struct<T: serde::Serialize>(title: &str, val: &str, obj: &T, width: Option<usize>) {
-    println!("");
-    print_line(width);
-    print_key_value(&title.bold(), val, None);
-    print_line(width);
+pub fn print_hashmap<K: std::fmt::Display,V: std::fmt::Display>(map: &HashMap<K,V>, title: Option<&str>) {
+    let max_len = map.keys().map(|key| key.to_string().len()).max().unwrap_or(STD_WIDTH);
+    let max_vlen = map.values().map(|val: &V| val.to_string().len()).max().unwrap_or(STD_WIDTH);
+
+    let line_len = max_len + max_vlen + 3;
+    print_line(Some(line_len));
+    if let Some(t) = title {
+        print_title(t);
+        print_line(Some(line_len));
+    }
+
+    for (key, value) in map {
+        print_info(&key.to_string(), &value.to_string(), Some(max_len));
+    }
+
+    print_line(Some(line_len));
+}
+
+pub fn write_hashmap<K: std::fmt::Display,V: std::fmt::Display>(f: &mut fmt::Formatter,map: &HashMap<K,V>, title: Option<&str>) {
+    let max_len = map.keys().map(|key| key.to_string().len()).max().unwrap_or(STD_WIDTH);
+    let max_vlen = map.values().map(|val: &V| val.to_string().len()).max().unwrap_or(STD_WIDTH);
+
+    let line_len = max_len + max_vlen + 3;
+    write_line(f,Some(line_len));
+    if let Some(t) = title {
+        write_title(f,t);
+        write_line(f,Some(line_len));
+    }
+
+    for (key, value) in map {
+        write_info(f,&key.to_string(), &value.to_string(), Some(max_len));
+    }
+
+    write_line(f,Some(line_len));
+}
+
+pub fn print_struct<T: serde::Serialize>(title: &str, val: &str, obj: &T) {
+
+    let mut  width: usize = 0;
+    let mut width_val: usize = 0;
+    let mut key_values_str: String = "".to_string();
     let json = serde_json::to_value(obj).unwrap();
     if let serde_json::Value::Object(map) = json {
-        let max_key_length = map.keys().map(|key| key.len()).max().unwrap_or(0)+1;
+        width = width.max(map.keys().map(|key| key.len()).max().unwrap_or(0)+1);
+        width_val = width_val.max(map.values().map(|val| val.to_string().len()).max().unwrap_or(0)+1);
         for (key, value) in map {
-            let formatted_key = format!("{:w$}", key, w = max_key_length);
-            print_key_value(&formatted_key, &value.to_string(), Some(max_key_length));
+            let formatted_key = format!("{:w$}", key, w = width);
+            let info_str = info(&formatted_key, &value.to_string(), Some(width));
+            key_values_str.push_str(&info_str);
+            key_values_str.push_str("\n");
         }
     }
-    print_line(width);
+    println!("");
+    let line_len = width + width_val + 3;
+    print_line(Some(line_len));
+    print_info(&title.bold(), val, None);
+    print_line(Some(line_len));
+    print!("{key_values_str}");
+    print_line(Some(line_len));
 }
 
 pub fn print_start_program(program_name: &str) -> OffsetDateTime {
     let local = OffsetDateTime::now_utc();
     let local_str: &str = &format!("{}", local);
-    println!("\n");
+    println!("{RESET}\n");
     print_double_line(Some(MEDIUM - 2));
     println!("{} {}: {}","Start".cinfo(),program_name.ctitle(),local_str.cvar());
     print_double_line(Some(MEDIUM - 2));
@@ -382,7 +462,7 @@ pub fn print_end_program(program_name: &str, start: OffsetDateTime) -> OffsetDat
     let local = OffsetDateTime::now_utc();
     let local_str: &str = &format!("{}", local);
     let duration_str: &str = &format!("{}",(local - start));
-    println!("\n");
+    println!("{RESET}\n");
     print_double_line(Some(MEDIUM));
     println!("{} {}: {} - {}","End ".cinfo(),program_name.cinfo().bold(),
                               local_str.cvar(),duration_str.cvar().bold());
@@ -398,8 +478,8 @@ pub enum TreeBlock {
 
 pub fn print_tree_item(item: &str,block_type: TreeBlock ) {
     match block_type {
-        TreeBlock::Item => println!("{} {}","├──".cline(),item.cvar()),
-        TreeBlock::End => println!("{} {}","└──".cline(),item.cvar()),
+        TreeBlock::Item => println!("{} {}","├──".cline(),item.citem()),
+        TreeBlock::End => println!("{} {}","└──".cline(),item.citem()),
     }
 }
 
@@ -413,7 +493,7 @@ pub fn table(table: Vec<Vec<&str>>, header: bool) -> String {
 
     let mut output = String::new();
     let table_len = max_lengths.iter().sum::<usize>() + SPACE * (max_lengths.len() - 1);
-    let line = format!("{}\n",&"─".repeat(table_len + SPACE).cline());
+    let line = format!("{}\n","─".repeat(table_len).as_str().cline());
     for (i, row) in table.iter().enumerate() {
         if i == 1 {
             output.push_str(&line);
@@ -435,3 +515,5 @@ pub fn table(table: Vec<Vec<&str>>, header: bool) -> String {
 pub fn print_table(data: Vec<Vec<&str>>) {
     println!("{}", table(data,true));
 }
+
+

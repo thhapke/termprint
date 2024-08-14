@@ -1,4 +1,6 @@
 mod termprint;
+use std::collections::HashMap;
+
 use serde::Serialize;
 
 use termprint as tp;
@@ -6,6 +8,8 @@ use termprint as tp;
 fn main() {
 
     let start = tp::print_start_program("Test termprint");
+
+    tp::print_terminal_type();
 
     tp::message("Just a message");
 
@@ -15,7 +19,7 @@ fn main() {
 
     tp::print_warning("warning message");
 
-    tp::print_key_value("Key","Value",None);
+    tp::print_info("Key","Value",None);
 
     tp::print_title("Title");
 
@@ -33,9 +37,9 @@ fn main() {
 
     tp::print_struct("Struct", "Person", &person, None);
 
-    tp::print_index2rgb();
+   tp::print_all_colors();
 
-    tp::print_end_program("Test termprint", start);
+    tp::print_index2rgb();
 
     let table = vec![
         vec!["Name", "Age", "City"],
@@ -43,5 +47,15 @@ fn main() {
         vec!["Bob", "25", "Los Angeles"],
         vec!["Charlie", "35", "Chicago"],
     ];
-    tp::print_table(table)
+    tp::print_table(table);
+
+    let mut map = HashMap::new();
+    map.insert("key1", "value1");
+    map.insert("key23", "value2");
+    map.insert("many key3", "value3");
+    tp::print_hashmap(&map,Some("Map"));
+    tp::print_hashmap(&map,None);
+
+    tp::print_end_program("Test termprint", start);
+
 }
