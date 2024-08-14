@@ -13,7 +13,7 @@
             "preLaunchTask": "cargo build basic"
         },
         {
-            "name": "Debug termprint truecolor",
+            "name": "Debug termprint colors256",
             "type": "lldb",
             "request": "launch",
             "program": "${workspaceFolder}/target/debug/termprint",
@@ -22,6 +22,17 @@
             "stopOnEntry": false,
             "sourceLanguages": ["rust"],
             "preLaunchTask": "cargo build colors256"
+        },
+        {
+            "name": "Debug termprint truecolor",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/target/debug/termprint",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopOnEntry": false,
+            "sourceLanguages": ["rust"],
+            "preLaunchTask": "cargo build truecolors"
         }
     ],
 }

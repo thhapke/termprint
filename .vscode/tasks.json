@@ -13,7 +13,29 @@
             "problemMatcher": ["$rustc"]
         },
         {
+            "label": "cargo build basic",
+            "type": "shell",
+            "command": "cargo",
+            "args": ["build", "--features", "basic"],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": ["$rustc"]
+        },
+        {
             "label": "cargo build colors256",
+            "type": "shell",
+            "command": "cargo",
+            "args": ["build", "--features", "colors256"],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": ["$rustc"]
+        },
+        {
+            "label": "cargo build truecolors",
             "type": "shell",
             "command": "cargo",
             "args": ["build", "--features", "truecolor"],

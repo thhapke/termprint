@@ -35,7 +35,7 @@ fn main() {
             age: 42,
     };
 
-    tp::print_struct("Struct", "Person", &person, None);
+    tp::print_struct("Struct", "Person", &person);
 
    tp::print_all_colors();
 
