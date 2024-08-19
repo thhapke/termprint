@@ -37,15 +37,14 @@ fn main() {
 
     tp::print_struct("Struct", "Person", &person);
 
-   tp::print_all_colors();
-
-    tp::print_index2rgb();
+    tp::print_all_colors();
+// tp::print_index2rgb();
 
     let table = vec![
-        vec!["Name", "Age", "City"],
-        vec!["Alice", "30", "New York"],
-        vec!["Bob", "25", "Los Angeles"],
-        vec!["Charlie", "35", "Chicago"],
+        vec!["Name", "Age", "City", "Country", "Street", "Profession", "Phone"],
+        vec!["Alice", "30", "New York", "USA", "123 Main St", "Engineer", "555-1234"],
+        vec!["Bob", "25", "Los Angeles", "USA", "456 Elm St", "Teacher", "555-5678"],
+        vec!["Charlie", "35", "Chicago", "USA", "789 Oak St", "Doctor", "555-9012"],
     ];
     tp::print_table(table);
 
@@ -54,7 +53,16 @@ fn main() {
     map.insert("key23", "value2");
     map.insert("many key3", "value3");
     tp::print_hashmap(&map,Some("Map"));
-    tp::print_hashmap(&map,None);
+
+    let person2 = Person {
+        name: "Mustermann".to_string(),
+        firstname: "Eva".to_string(),
+        age: 39,
+    };
+
+    let vec_persons = vec![person, person2];
+
+    tp::print_vec_struct("Persons Struct",&vec_persons);
 
     tp::print_end_program("Test termprint", start);
 

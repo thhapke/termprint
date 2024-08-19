@@ -1,8 +1,12 @@
+use core::hash;
 use std::fmt;
 
 use colored::{Colorize, Color,ColoredString};
 use time::OffsetDateTime;
 use std::collections::HashMap;
+
+use serde::Serialize;
+use serde_json::Value;
 
 pub const LONG: usize = 120;
 pub const MEDIUM: usize = 80;
@@ -45,14 +49,12 @@ pub const COLUMN_COLORS: [(u8, u8, u8); 3] = [
 ];
 
 #[cfg(feature = "basic")]
-pub const COLUMN_COLORS: [Color; 7] = [
-    Color::White,        
-    Color::Blue,  
-    Color::Green,
-    Color::Yellow,
-    Color::Blue,
-    Color::Magenta,
-    Color::Cyan,
+pub const COLUMN_COLORS: [Color; 5] = [
+    Color::BrightBlue,  
+    Color::BrightCyan,
+    Color::BrightMagenta,    
+    Color::BrightGreen,
+    Color::BrightYellow,
 ];
 
 #[cfg(feature = "basic")]
@@ -82,7 +84,7 @@ impl ColoredItem for &str {
     }
 
     fn cline(&self) -> ColoredString {
-        self.blue()
+        self.bright_blue().bold()
     }
 
     fn column(&self,index:usize) -> ColoredString {
@@ -350,7 +352,8 @@ pub fn write_title(f: &mut fmt::Formatter,msg: &str)  {
 
 pub fn line(length: Option<usize>) -> String {
     let w: usize = length.unwrap_or(MEDIUM);
-    format!("{:⎯<w$}", "".cline())
+    format!("{}","─".repeat(w).as_str().cline())
+    // format!("{:⎯<w$}", "".cline().bold())
 }
 
 pub fn print_line(length: Option<usize>) {
@@ -447,6 +450,41 @@ pub fn print_struct<T: serde::Serialize>(title: &str, val: &str, obj: &T) {
     print_line(Some(line_len));
 }
 
+fn get_keys_from_value(value: &Value) -> Vec<&str> {
+    match value {
+        Value::Object(map) => map.keys().map(|k| k.as_str()).rev().collect(),
+        _ => vec![],
+    }
+}
+
+fn get_values_from_value(value: &Value) -> Vec<String> {
+    match value {
+        // Value::Object(map) => map.values().map(|k| k.as_str().unwrap_or("")).collect(),
+        Value::Object(map) => map.values().map(|k| k.to_string().replace("\"",""))
+                                                      .rev().collect(),
+        _ => vec![],
+    }
+}
+
+pub fn print_vec_struct<T: serde::Serialize>(title: &str, vec: &Vec<T>) {
+    
+    let mut table: Vec<Vec<&str>> = Vec::with_capacity(vec.len()+1);
+    let obj1 = serde_json::to_value(vec.get(0)).expect("Failed to serialize struct");
+    table.push(get_keys_from_value(&obj1));
+
+    let rows_values = vec.iter().map(|v| serde_json::to_value(v).unwrap()).collect::<Vec<Value>>();
+    let rows_string = rows_values.iter().map(|v| get_values_from_value(v)).collect::<Vec<Vec<String>>>();
+    let rows_str = rows_string.iter().rev()
+                                       .map(|v| v.iter().map(|s| s.as_str()).collect::<Vec<&str>>())
+                                       .collect::<Vec<Vec<&str>>>();
+    
+    println!();
+    table.extend(rows_str);
+    print_title(&title);
+    println!();
+    print_table(table);
+}
+
 pub fn print_start_program(program_name: &str) -> OffsetDateTime {
     let local = OffsetDateTime::now_utc();
     let local_str: &str = &format!("{}", local);
@@ -511,6 +549,7 @@ pub fn table(table: Vec<Vec<&str>>, header: bool) -> String {
     output.push_str(&line);
     output
 }
+
 
 pub fn print_table(data: Vec<Vec<&str>>) {
     println!("{}", table(data,true));
