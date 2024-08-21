@@ -327,7 +327,7 @@ pub fn write_info(f: &mut fmt::Formatter,key: &str, value: &str, width: Option<u
 
 pub fn message(txt: &str) -> String {
     format!("{}",txt.cinfo())
-}
+}                                                 
 
 pub fn print_message(txt: &str)  {
     println!("{}",message(txt));
@@ -348,6 +348,35 @@ pub fn print_title(msg: &str)  {
 }
 pub fn write_title(f: &mut fmt::Formatter,msg: &str)  {
     writeln!(f,"{}",title(msg)).unwrap()
+}
+
+pub fn make_header(headers: &Vec<&str>, widths: &Vec<usize>) -> String {
+    let mut output = String::new();
+    for (i,cell) in headers.iter().enumerate() {
+        let padded_cell = format!("{:width$}", cell.column(i).bold(), width = widths[i]);
+        output.push_str(&padded_cell);
+        output.push_str(&" ".repeat(SPACE));
+    }
+    output
+}
+
+pub fn make_row(row: &Vec<&str>, widths: &Vec<usize>) -> String {
+    let mut output = String::new();
+    for (i,cell) in row.iter().enumerate() {
+        let padded_cell = format!("{:width$}", cell.column(i), width = widths[i]);
+        output.push_str(&padded_cell);
+        output.push_str(&" ".repeat(SPACE));
+    }
+    output
+}
+
+pub fn write_header(f: &mut fmt::Formatter,headers: &Vec<&str>, widths:&Vec<usize>) {
+    let output = make_header(headers,widths);
+    writeln!(f,"{}",output).unwrap()
+}
+
+pub fn print_header(headers: &Vec<&str>, widths: &Vec<usize>) {
+    println!("{}",make_header(headers,widths));
 }
 
 pub fn line(length: Option<usize>) -> String {
@@ -478,8 +507,8 @@ pub fn print_vec_struct<T: serde::Serialize>(title: &str, vec: &Vec<T>) {
                                        .map(|v| v.iter().map(|s| s.as_str()).collect::<Vec<&str>>())
                                        .collect::<Vec<Vec<&str>>>();
     
-    println!();
     table.extend(rows_str);
+    println!();
     print_title(&title);
     println!();
     print_table(table);
@@ -521,28 +550,30 @@ pub fn print_tree_item(item: &str,block_type: TreeBlock ) {
     }
 }
 
-pub fn table(table: Vec<Vec<&str>>, header: bool) -> String {
+pub fn get_column_widths(table: &Vec<Vec<&str>>) -> Vec<usize> {
     let mut max_lengths: Vec<usize> = vec![0; table[0].len()];
-    for row in &table {
+    for row in table {
         for (i, cell) in row.iter().enumerate() {
             max_lengths[i] = max_lengths[i].max(cell.len());
         }
     }
+    max_lengths
+    }
+
+pub fn make_table(table: Vec<Vec<&str>>, header: bool) -> String {
+    let max_lengths = get_column_widths(&table);
 
     let mut output = String::new();
-    let table_len = max_lengths.iter().sum::<usize>() + SPACE * (max_lengths.len() - 1);
+    let table_len = max_lengths.iter().sum::<usize>() + SPACE * (&max_lengths.len() - 1);
     let line = format!("{}\n","─".repeat(table_len).as_str().cline());
     for (i, row) in table.iter().enumerate() {
         if i == 1 {
             output.push_str(&line);
         }
-        for (j, cell) in row.iter().enumerate() {
-            let mut padded_cell = format!("{:width$}", cell.column(j), width = max_lengths[j]);
-            if i ==0 && header {
-                padded_cell = format!("{:width$}", cell.column(j).bold(), width = max_lengths[j]);
-            }
-            output.push_str(&padded_cell);
-            output.push_str(&" ".repeat(SPACE));
+        if i ==0 && header {
+            output.push_str(&make_header(row, &max_lengths));
+        } else {
+            output.push_str(&make_row(row, &max_lengths));
         }
         output.push('\n');
     }
@@ -550,9 +581,17 @@ pub fn table(table: Vec<Vec<&str>>, header: bool) -> String {
     output
 }
 
-
-pub fn print_table(data: Vec<Vec<&str>>) {
-    println!("{}", table(data,true));
+pub fn table_from_string(table: Vec<Vec<String>>, header: bool) -> String {
+    let table_vec: Vec<Vec<&str>> = table.iter().map(|row| row.iter().map(|s| s.as_str()).collect()).collect();
+    make_table(table_vec, header)
 }
 
+
+pub fn print_table(data: Vec<Vec<&str>>) {
+    println!("{}", make_table(data,true));
+}
+
+pub fn write_table(f: &mut fmt::Formatter,data: Vec<Vec<&str>>) {
+    writeln!(f,"{}", make_table(data,true));
+}
 
