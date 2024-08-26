@@ -1,12 +1,14 @@
-use core::hash;
+
 use std::fmt;
+use std::cmp::min;
 
 use colored::{Colorize, Color,ColoredString};
 use time::OffsetDateTime;
 use std::collections::HashMap;
 
-use serde::Serialize;
 use serde_json::Value;
+
+use termsize;
 
 pub const LONG: usize = 120;
 pub const MEDIUM: usize = 80;
@@ -14,6 +16,7 @@ pub const SHORT: usize = 30;
 pub const SPACE: usize = 3;
 pub const STD_WIDTH: usize = 20;
 pub const RESET: &str = "\x1b[0m";
+pub const MAX_WIDTH: usize = 120;
 
 trait ColoredItem {
     fn cinfo(&self) -> ColoredString;
@@ -59,6 +62,42 @@ pub const COLUMN_COLORS: [Color; 5] = [
 
 #[cfg(feature = "basic")]
 impl ColoredItem for &str {
+    fn cinfo(&self) -> ColoredString {
+        self.blue()
+    }
+
+    fn cvar(&self) -> ColoredString {
+        self.bright_cyan()
+    }
+
+    fn ctitle(&self) -> ColoredString {
+        self.bold().blue()
+    }
+
+    fn cerror(&self) -> ColoredString {
+        self.bright_red().bold()
+    }
+
+    fn cwarning(&self) -> ColoredString {
+        self.bright_yellow()
+    }
+
+    fn citem(&self) -> ColoredString {
+        self.bright_cyan()
+    }
+
+    fn cline(&self) -> ColoredString {
+        self.bright_blue().bold()
+    }
+
+    fn column(&self,index:usize) -> ColoredString {
+        let col_color = COLUMN_COLORS[index % COLUMN_COLORS.len()];
+        self.color(col_color)
+    }
+}
+
+#[cfg(feature = "basic")]
+impl ColoredItem for String {
     fn cinfo(&self) -> ColoredString {
         self.blue()
     }
@@ -169,7 +208,6 @@ impl ColoredItem for &str {
 #[cfg(feature = "mono")]
 impl ColoredItem for &str {
     fn cinfo(&self) -> ColoredString {
-
         self.white()
     }
 
@@ -240,12 +278,25 @@ pub fn get_terminal_type() -> String {
     term
 }
 
+pub fn get_terminal_width() -> usize {
+    termsize::get().unwrap().cols.into()
+}
+
 pub fn print_terminal_type() {
     let term = get_terminal_type();
-    print_double_line(None);
-    print_info("Terminal type", &term, None);
-    print_double_line(None);   
+    print_double_line(MEDIUM);
+    print_info("Terminal type", &term);
+    print_double_line(MEDIUM);   
     println!();
+}
+
+fn truncate_str(s: &str, max_len: usize) -> String {
+    if s.len() > max_len && max_len > 3 {
+        let truncated = s.chars().take(max_len - 3).collect::<String>();
+        format!("{}...", truncated)
+    } else {
+        s.to_string()
+    }
 }
 
 pub fn print_all_colors() {
@@ -265,7 +316,7 @@ pub fn print_all_colors() {
 
 pub fn print_index2rgb() {
     print_message("\nColor index to rgb:");
-    print_line(Some(MEDIUM));
+    print_line(MEDIUM);
     for i in 0..65{
         let rgb1 = index2rgb(i);
         let rgb2 = index2rgb(i+65);
@@ -309,18 +360,16 @@ pub fn print_warning(msg: &str)  {
     println!("{}",warning(msg));
 }
 
-pub fn info(key: &str, value: &str, width: Option<usize>) -> String {
-    let w: usize = width.unwrap_or(key.len());
-    format!("{:w$}: {}",key.cinfo(),value.cvar())
+pub fn info(key: &str, value: &str) -> String {
+    format!("{}: {}",key.cinfo(),value.cvar())
 }
 
-pub fn print_info(key: &str, value: &str, width: Option<usize>) {
-    println!("{}",info(key, value, width));
+pub fn print_info(key: &str, value: &str) {
+    println!("{}",info(key, value));
 }
 
-pub fn write_info(f: &mut fmt::Formatter,key: &str, value: &str, width: Option<usize>) {
-    let w: usize = width.unwrap_or(key.len());
-    if let Err(e) = writeln!(f,"{:w$}{}",key.cinfo(),value.cvar()) { 
+pub fn write_info(f: &mut fmt::Formatter,key: &str, value: &str) {
+    if let Err(e) = writeln!(f,"{}{}",key.cinfo(),value.cvar()) { 
         print_error("Error write",Some(&"write_info".to_string()),Some(&e.to_string()))
     };
 }
@@ -339,15 +388,15 @@ pub fn write_message(f: &mut fmt::Formatter,txt: &str)  {
     };
 }
 
-pub fn title(msg: &str) -> String {
-    format!("{}",msg.ctitle().bold())
+pub fn str_title(msg: &str) -> String {
+    format!("{}\n",msg.ctitle().bold())
 }
 
 pub fn print_title(msg: &str)  {
-    println!("{}",title(msg))
+    print!("{}",str_title(msg))
 }
 pub fn write_title(f: &mut fmt::Formatter,msg: &str)  {
-    writeln!(f,"{}",title(msg)).unwrap()
+    write!(f,"{}",str_title(msg)).unwrap()
 }
 
 pub fn make_header(headers: &Vec<&str>, widths: &Vec<usize>) -> String {
@@ -379,104 +428,132 @@ pub fn print_header(headers: &Vec<&str>, widths: &Vec<usize>) {
     println!("{}",make_header(headers,widths));
 }
 
-pub fn line(length: Option<usize>) -> String {
-    let w: usize = length.unwrap_or(MEDIUM);
-    format!("{}","─".repeat(w).as_str().cline())
+pub fn line(length: usize) -> String {
+    format!("{}\n","─".repeat(length).as_str().cline())
     // format!("{:⎯<w$}", "".cline().bold())
 }
 
-pub fn print_line(length: Option<usize>) {
-    println!("{}", line(length));
+pub fn print_line(length: usize) {
+    print!("{}", line(length));
 }
 
-pub fn write_line(f: &mut fmt::Formatter,length: Option<usize>) {
-    if let Err(e) = writeln!(f,"{}", line(length)) { 
+pub fn write_line(f: &mut fmt::Formatter,length: usize) {
+    if let Err(e) = write!(f,"{}", line(length)) { 
         print_error("Error write",Some(&"write_line".to_string()),Some(&e.to_string()))
     };
 }
 
-pub fn double_line(length: Option<usize>) -> String {
-    let w: usize = length.unwrap_or(MEDIUM);
-    format!("{:═<w$}", "".cline())
+pub fn double_line(length: usize) -> String {
+    format!("{:═<length$}\n", "".cline())
 }
 
-pub fn print_double_line(length: Option<usize>) {
-    println!("{}", double_line(length));
+pub fn print_double_line(length: usize) {
+    print!("{}", double_line(length));
 }
 
-pub fn write_double_line(f: &mut fmt::Formatter,length: Option<usize>) {
+pub fn write_double_line(f: &mut fmt::Formatter,length: usize) {
     if let Err(e) = writeln!(f,"{}", double_line(length)) { 
         print_error("Error write",Some(&"write_double_line".to_string()),Some(&e.to_string()))
     };
 }
 
 pub fn print_map <T: std::fmt::Display> (title: &str,val: &str, map: T ) {
-    print_line(Some(MEDIUM));
-    print_info(title, val , None);
-    print_line(Some(MEDIUM));
+    print_line(MEDIUM);
+    print_info(title, val);
+    print_line(MEDIUM);
     println!("{}",map);
-    print_line(Some(MEDIUM));
+    print_line(MEDIUM);
 }
 
-pub fn print_hashmap<K: std::fmt::Display,V: std::fmt::Display>(map: &HashMap<K,V>, title: Option<&str>) {
-    let max_len = map.keys().map(|key| key.to_string().len()).max().unwrap_or(STD_WIDTH);
-    let max_vlen = map.values().map(|val: &V| val.to_string().len()).max().unwrap_or(STD_WIDTH);
+pub fn str_key_value(key: &str, value: &str, max_klen:usize, max_vlen:usize) -> String {
+    
+    let parts: Vec<String> = value.chars()
+                    .collect::<Vec<_>>()
+                    .chunks(max_vlen)
+                    .map(|chunk| chunk.iter().collect())
+                    .collect();
+    let mut output: String = "".to_string();
+    for (i,p) in parts.iter().enumerate() {
+        if i == 0 {
+            output.push_str(&format!("{:max_klen$}: {}\n", key.cinfo(), p.cvar()));
+        }
+        else {
+            output.push_str(&format!("{:max_klen$}  {}\n", " ", p.cvar()));
+        }
+    } 
+    output
+}
 
-    let line_len = max_len + max_vlen + 3;
-    print_line(Some(line_len));
+pub fn str_hashmap<K: std::fmt::Display,V: std::fmt::Display>(map: &HashMap<K,V>, title: Option<&str>) -> String {
+
+    // let max_width = min(max_width, MAX_WIDTH); 
+    let max_width = get_terminal_width();
+    let max_k = map.keys().map(|key| key.to_string().len()).max().unwrap_or(max_width);
+    let mut max_v = map.values().map(|val: &V| val.to_string().len()).max().unwrap_or(max_width);
+    max_v = min(max_v, max_width - max_k - 3);  
+    let line_len = max_k + max_v + 3;
+
+    let mut output = String::new();
+    // output.push_str(&line(line_len));
     if let Some(t) = title {
-        print_title(t);
-        print_line(Some(line_len));
+        output.push_str(&str_title(t));
+        output.push_str(&line(line_len));
     }
 
     for (key, value) in map {
-        print_info(&key.to_string(), &value.to_string(), Some(max_len));
+        output.push_str(&str_key_value(&key.to_string(), &value.to_string(), max_k, max_v));
     }
+    output.push_str(&line(line_len));
+    output
+}
 
-    print_line(Some(line_len));
+
+pub fn print_hashmap<K: std::fmt::Display,V: std::fmt::Display>(map: &HashMap<K,V>, title: Option<&str>) { 
+    print!("{}",str_hashmap(map,title));
 }
 
 pub fn write_hashmap<K: std::fmt::Display,V: std::fmt::Display>(f: &mut fmt::Formatter,map: &HashMap<K,V>, title: Option<&str>) {
-    let max_len = map.keys().map(|key| key.to_string().len()).max().unwrap_or(STD_WIDTH);
-    let max_vlen = map.values().map(|val: &V| val.to_string().len()).max().unwrap_or(STD_WIDTH);
-
-    let line_len = max_len + max_vlen + 3;
-    write_line(f,Some(line_len));
-    if let Some(t) = title {
-        write_title(f,t);
-        write_line(f,Some(line_len));
-    }
-
-    for (key, value) in map {
-        write_info(f,&key.to_string(), &value.to_string(), Some(max_len));
-    }
-
-    write_line(f,Some(line_len));
+    writeln!(f,"{}",str_hashmap(map,title));
 }
 
-pub fn print_struct<T: serde::Serialize>(title: &str, val: &str, obj: &T) {
+// In construction
+pub fn str_struct<T: serde::Serialize>(title: &str, obj: &T) -> String {
 
-    let mut  width: usize = 0;
-    let mut width_val: usize = 0;
-    let mut key_values_str: String = "".to_string();
+    // let max_width = min(max_width, MAX_WIDTH);
+    let max_width = get_terminal_width();
+    let mut max_k: usize = 0;
+    let mut max_v: usize = 0;
+
     let json = serde_json::to_value(obj).unwrap();
+    let mut output = String::new();
+
     if let serde_json::Value::Object(map) = json {
-        width = width.max(map.keys().map(|key| key.len()).max().unwrap_or(0)+1);
-        width_val = width_val.max(map.values().map(|val| val.to_string().len()).max().unwrap_or(0)+1);
+        max_k = max_k.max(map.keys().map(|key| key.len()).max().unwrap_or(0)+1);
+        max_v = max_v.max(map.values().map(|val| val.to_string().len()).max().unwrap_or(0)+1);
+        max_v = min(max_v, max_width - max_k - 3);  
+        let line_len = max_k + max_v + 3;
+
+        // output.push_str(&line(line_len));
+        output.push_str(&str_title(title));
+        output.push_str(&line(line_len));
+
         for (key, value) in map {
-            let formatted_key = format!("{:w$}", key, w = width);
-            let info_str = info(&formatted_key, &value.to_string(), Some(width));
-            key_values_str.push_str(&info_str);
-            key_values_str.push_str("\n");
+            output.push_str(&str_key_value(&key.to_string(), &value.to_string(), max_k, max_v));
         }
+
+        output.push_str(&line(line_len));
     }
-    println!("");
-    let line_len = width + width_val + 3;
-    print_line(Some(line_len));
-    print_info(&title.bold(), val, None);
-    print_line(Some(line_len));
-    print!("{key_values_str}");
-    print_line(Some(line_len));
+    output
+}
+
+pub fn print_struct<T: serde::Serialize>(title: &str, obj: &T) {
+    println!("{}", str_struct(title, obj));
+}
+
+pub fn write_struct<T: serde::Serialize>(f: &mut fmt::Formatter, title: &str, obj: &T) {
+    if let Err(e) = writeln!(f,"{}",str_struct(title,obj)) { 
+        print_error("Error write",Some(&"write_struct".to_string()),Some(&e.to_string()))
+    };
 }
 
 fn get_keys_from_value(value: &Value) -> Vec<&str> {
@@ -511,29 +588,31 @@ pub fn print_vec_struct<T: serde::Serialize>(title: &str, vec: &Vec<T>) {
     println!();
     print_title(&title);
     println!();
-    print_table(table);
+    print_table(table,true,None);
 }
 
 pub fn print_start_program(program_name: &str) -> OffsetDateTime {
+    let max_width = get_terminal_width();
     let local = OffsetDateTime::now_utc();
     let local_str: &str = &format!("{}", local);
     println!("{RESET}\n");
-    print_double_line(Some(MEDIUM - 2));
+    print_double_line(max_width);
     println!("{} {}: {}","Start".cinfo(),program_name.ctitle(),local_str.cvar());
-    print_double_line(Some(MEDIUM - 2));
+    print_double_line(max_width);
     println!("\n");
     local
 }
 
 pub fn print_end_program(program_name: &str, start: OffsetDateTime) -> OffsetDateTime {
+    let max_width = get_terminal_width();
     let local = OffsetDateTime::now_utc();
     let local_str: &str = &format!("{}", local);
     let duration_str: &str = &format!("{}",(local - start));
     println!("{RESET}\n");
-    print_double_line(Some(MEDIUM));
+    print_double_line(max_width);
     println!("{} {}: {} - {}","End ".cinfo(),program_name.cinfo().bold(),
                               local_str.cvar(),duration_str.cvar().bold());
-    print_double_line(Some(MEDIUM));
+    print_double_line(max_width);
     println!("\n");
     local
 }
@@ -560,10 +639,13 @@ pub fn get_column_widths(table: &Vec<Vec<&str>>) -> Vec<usize> {
     max_lengths
     }
 
-pub fn make_table(table: Vec<Vec<&str>>, header: bool) -> String {
+pub fn make_table(table: Vec<Vec<&str>>, header: bool,title: Option<&str>) -> String {
+
+    let title = title.map_or("".to_string(), |t| format!("{}{}",t.ctitle(),"\n"));
     let max_lengths = get_column_widths(&table);
 
-    let mut output = String::new();
+    let mut output = String::from(title);
+
     let table_len = max_lengths.iter().sum::<usize>() + SPACE * (&max_lengths.len() - 1);
     let line = format!("{}\n","─".repeat(table_len).as_str().cline());
     for (i, row) in table.iter().enumerate() {
@@ -581,17 +663,17 @@ pub fn make_table(table: Vec<Vec<&str>>, header: bool) -> String {
     output
 }
 
-pub fn table_from_string(table: Vec<Vec<String>>, header: bool) -> String {
+pub fn table_from_string(table: Vec<Vec<String>>, has_header: bool,title:Option<&str>) -> String {
     let table_vec: Vec<Vec<&str>> = table.iter().map(|row| row.iter().map(|s| s.as_str()).collect()).collect();
-    make_table(table_vec, header)
+    make_table(table_vec, has_header,title)
 }
 
 
-pub fn print_table(data: Vec<Vec<&str>>) {
-    println!("{}", make_table(data,true));
+pub fn print_table(data: Vec<Vec<&str>>, has_header: bool, title: Option<&str>) {
+    println!("{}", make_table(data,has_header,title));
 }
 
-pub fn write_table(f: &mut fmt::Formatter,data: Vec<Vec<&str>>) {
-    writeln!(f,"{}", make_table(data,true));
+pub fn write_table(f: &mut fmt::Formatter,data: Vec<Vec<&str>>,has_header: bool, title: Option<&str>) {
+    writeln!(f,"{}", make_table(data,has_header,title));
 }
 

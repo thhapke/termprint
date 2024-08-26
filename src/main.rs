@@ -3,23 +3,25 @@ use std::collections::HashMap;
 
 use serde::Serialize;
 
-use termprint as tp;
+use termprint::{self as tp, MAX_WIDTH};
 
 fn main() {
 
     let start = tp::print_start_program("Test termprint");
 
+    tp::print_all_colors();
+
     tp::print_terminal_type();
 
     tp::message("Just a message");
 
-    tp::print_info("Info with width: 20","Value",Some(20));
+    tp::print_info("Info with width: 20","Value");
 
     tp::print_error("error message", Some("error info"), Some("Additional err_msg"));
 
     tp::print_warning("warning message");
 
-    tp::print_info("Key","Value",None);
+    tp::print_info("Key","Value");
 
     tp::print_title("Title");
 
@@ -35,9 +37,16 @@ fn main() {
             age: 42,
     };
 
-    tp::print_struct("Struct", "Person", &person);
+    let person_long = Person {
+        name: "MaryMaryMaryMaryMaryMaryMaryMaryMaryMaryMaryMaryMaryMaryMaryMaryMaryMaryMaryMaryMaryMaryMaryMaryMaryMary".to_string(),
+        firstname: "HigginsHigginsHigginsHigginsHigginsHigginsHigginsHigginsHigginsHigginsHigginsHigginsHigginsHigginsHigginsHigginsHiggins".to_string(),
+        age: 42,
+};
 
-    tp::print_all_colors();
+    tp::print_struct(&format!("Struct: {}","Person"),&person);
+    tp::print_struct(&format!("Struct Long: {}","Person"),&person_long);
+
+
 // tp::print_index2rgb();
 
     let table = vec![
@@ -46,13 +55,16 @@ fn main() {
         vec!["Bob", "25", "Los Angeles", "USA", "456 Elm St", "Teacher", "555-5678"],
         vec!["Charlie", "35", "Chicago", "USA", "789 Oak St", "Doctor", "555-9012"],
     ];
-    tp::print_table(table);
+    
+    tp::print_table(table, true, Some("Table"));
 
     let mut map = HashMap::new();
     map.insert("key1", "value1");
     map.insert("key23", "value2");
-    map.insert("many key3", "value3");
+    map.insert("many key3", "valuevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevalue");
     tp::print_hashmap(&map,Some("Map"));
+
+    println!("{}",tp::str_hashmap(&map, Some("Title row break")));
 
     let person2 = Person {
         name: "Mustermann".to_string(),
