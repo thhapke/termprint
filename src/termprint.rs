@@ -1,6 +1,7 @@
 
+use core::num;
 use std::fmt;
-use std::cmp::min;
+use std::cmp::{min,max};
 
 use colored::{Colorize, Color,ColoredString};
 use time::OffsetDateTime;
@@ -17,6 +18,7 @@ pub const SPACE: usize = 3;
 pub const STD_WIDTH: usize = 20;
 pub const RESET: &str = "\x1b[0m";
 pub const MAX_WIDTH: usize = 120;
+pub const MAX_COL_WIDTH: usize = 10;
 
 trait ColoredItem {
     fn cinfo(&self) -> ColoredString;
@@ -289,15 +291,15 @@ pub fn print_terminal_type() {
     print_double_line(MEDIUM);   
     println!();
 }
-
-fn truncate_str(s: &str, max_len: usize) -> String {
-    if s.len() > max_len && max_len > 3 {
-        let truncated = s.chars().take(max_len - 3).collect::<String>();
-        format!("{}...", truncated)
-    } else {
-        s.to_string()
-    }
-}
+// UNUSED
+// fn truncate_str(s: &str, max_len: usize) -> String {
+//     if s.len() > max_len && max_len > 3 {
+//         let truncated = s.chars().take(max_len - 3).collect::<String>();
+//         format!("{}...", truncated)
+//     } else {
+//         s.to_string()
+//     }
+// }
 
 pub fn print_all_colors() {
     print_title("All Clorored Colors");
@@ -399,33 +401,15 @@ pub fn write_title(f: &mut fmt::Formatter,msg: &str)  {
     write!(f,"{}",str_title(msg)).unwrap()
 }
 
-pub fn make_header(headers: &Vec<&str>, widths: &Vec<usize>) -> String {
-    let mut output = String::new();
-    for (i,cell) in headers.iter().enumerate() {
-        let padded_cell = format!("{:width$}", cell.column(i).bold(), width = widths[i]);
-        output.push_str(&padded_cell);
-        output.push_str(&" ".repeat(SPACE));
-    }
-    output
-}
 
-pub fn make_row(row: &Vec<&str>, widths: &Vec<usize>) -> String {
-    let mut output = String::new();
-    for (i,cell) in row.iter().enumerate() {
-        let padded_cell = format!("{:width$}", cell.column(i), width = widths[i]);
-        output.push_str(&padded_cell);
-        output.push_str(&" ".repeat(SPACE));
-    }
-    output
-}
 
-pub fn write_header(f: &mut fmt::Formatter,headers: &Vec<&str>, widths:&Vec<usize>) {
-    let output = make_header(headers,widths);
+pub fn write_header(f: &mut fmt::Formatter,headers: &Vec<&str>, widths:&Vec<usize>, start_index: usize, last_index: usize) {
+    let output = make_header(headers,widths,start_index,last_index);
     writeln!(f,"{}",output).unwrap()
 }
 
-pub fn print_header(headers: &Vec<&str>, widths: &Vec<usize>) {
-    println!("{}",make_header(headers,widths));
+pub fn print_header(headers: &Vec<&str>, widths: &Vec<usize>, start_index: usize, last_index: usize) {
+    println!("{}",make_header(headers,widths,start_index,last_index));
 }
 
 pub fn line(length: usize) -> String {
@@ -550,10 +534,8 @@ pub fn print_struct<T: serde::Serialize>(title: &str, obj: &T) {
     println!("{}", str_struct(title, obj));
 }
 
-pub fn write_struct<T: serde::Serialize>(f: &mut fmt::Formatter, title: &str, obj: &T) {
-    if let Err(e) = writeln!(f,"{}",str_struct(title,obj)) { 
-        print_error("Error write",Some(&"write_struct".to_string()),Some(&e.to_string()))
-    };
+pub fn write_struct<T: serde::Serialize>(f: &mut fmt::Formatter, title: &str, obj: &T) -> Result<(), std::fmt::Error> {
+    writeln!(f, "{}", str_struct(title, obj))
 }
 
 fn get_keys_from_value(value: &Value) -> Vec<&str> {
@@ -588,7 +570,7 @@ pub fn print_vec_struct<T: serde::Serialize>(title: &str, vec: &Vec<T>) {
     println!();
     print_title(&title);
     println!();
-    print_table(table,true,None);
+    print_table(table,true,None,None);
 }
 
 pub fn print_start_program(program_name: &str) -> OffsetDateTime {
@@ -629,51 +611,135 @@ pub fn print_tree_item(item: &str,block_type: TreeBlock ) {
     }
 }
 
-pub fn get_column_widths(table: &Vec<Vec<&str>>) -> Vec<usize> {
-    let mut max_lengths: Vec<usize> = vec![0; table[0].len()];
-    for row in table {
-        for (i, cell) in row.iter().enumerate() {
-            max_lengths[i] = max_lengths[i].max(cell.len());
-        }
-    }
-    max_lengths
-    }
 
-pub fn make_table(table: Vec<Vec<&str>>, header: bool,title: Option<&str>) -> String {
+
+pub fn make_table(table: Vec<Vec<&str>>, header: bool,title: Option<&str>,column_width: Option<usize>) -> String {
+
+    let max_width = get_terminal_width()-10;
+    let max_col_width = column_width.unwrap_or(MAX_COL_WIDTH);
 
     let title = title.map_or("".to_string(), |t| format!("{}{}",t.ctitle(),"\n"));
-    let max_lengths = get_column_widths(&table);
-
+    let col_widths = get_column_widths(&table,max_col_width);
+    
     let mut output = String::from(title);
 
-    let table_len = max_lengths.iter().sum::<usize>() + SPACE * (&max_lengths.len() - 1);
-    let line = format!("{}\n","─".repeat(table_len).as_str().cline());
-    for (i, row) in table.iter().enumerate() {
-        if i == 1 {
-            output.push_str(&line);
+    let mut start_index = 0;
+    while start_index < table[0].len() {
+        let next_index = next_columns_segment(start_index, max_width, &col_widths);
+        let table_len = col_widths[start_index..=next_index].iter().sum::<usize>() + SPACE * (1+next_index - start_index);
+        let line = format!("{}\n","─".repeat(table_len).as_str().cline());
+        for (i, row) in table.iter().enumerate() {
+            if i == 0 {
+                if header==false {
+                    output.push_str(&line);
+                } else {
+                    output.push_str(&make_header(row, &col_widths,start_index,next_index));
+                    output.push_str(&line);
+                }
+            } else {
+                output.push_str(&make_row(row, &col_widths,start_index,next_index));
+            }
         }
-        if i ==0 && header {
-            output.push_str(&make_header(row, &max_lengths));
-        } else {
-            output.push_str(&make_row(row, &max_lengths));
-        }
-        output.push('\n');
+        output.push_str(&line);
+        output.push_str("\n");
+
+        start_index = next_index + 1;
     }
-    output.push_str(&line);
     output
 }
 
-pub fn table_from_string(table: Vec<Vec<String>>, has_header: bool,title:Option<&str>) -> String {
+pub fn table_from_string(
+    table: Vec<Vec<String>>,  
+    has_header: bool,title:Option<&str>,column_width:Option<usize>
+)-> String {
     let table_vec: Vec<Vec<&str>> = table.iter().map(|row| row.iter().map(|s| s.as_str()).collect()).collect();
-    make_table(table_vec, has_header,title)
+    make_table(table_vec, has_header,title,column_width)
 }
 
 
-pub fn print_table(data: Vec<Vec<&str>>, has_header: bool, title: Option<&str>) {
-    println!("{}", make_table(data,has_header,title));
+pub fn print_table(data: Vec<Vec<&str>>, 
+    has_header: bool,  
+    title: Option<&str>,column_width: Option<usize>
+) {
+    println!("{}", make_table(data,has_header,title,column_width));
 }
 
-pub fn write_table(f: &mut fmt::Formatter,data: Vec<Vec<&str>>,has_header: bool, title: Option<&str>) {
-    writeln!(f,"{}", make_table(data,has_header,title));
+pub fn write_table(
+    f: &mut fmt::Formatter, 
+    data: Vec<Vec<&str>>, 
+    has_header: bool, 
+    title: Option<&str>,
+    column_width: Option<usize>
+) -> Result<(), std::fmt::Error> {
+    writeln!(f, "{}", make_table(data, has_header, title,column_width))
 }
 
+pub fn make_header(
+    headers: &Vec<&str>,
+    widths: &Vec<usize>,
+    start_index: usize,
+    last_index: usize
+) -> String {
+    let mut output = String::new();
+    let header_rows = (start_index..=last_index)
+        .map(|i| headers[i].len() / widths[i])
+        .max()
+        .unwrap_or(0);
+
+    for hr in 0..header_rows {
+        for (i, cell) in headers[start_index..=last_index].iter().enumerate() {
+            let padded = format!("{:width$}", cell, width = widths[i] * header_rows);
+            let slice = &padded[hr*widths[i]..widths[i]*(hr+1)];
+            output.push_str(&format!("{}{}", slice.column(i)," ".repeat(SPACE)));
+        }
+        output.push_str("\n");
+    }
+    output
+}
+
+pub fn make_row(
+    row: &Vec<&str>,
+    widths: &Vec<usize>,
+    start_index: usize,
+    last_index: usize
+) -> String {
+    let mut output = String::new();
+    for (i,cell) in row[start_index..=last_index].iter().enumerate() {
+        if cell.len() > widths[i] {
+            let truncated = &format!("{}*",&cell[..widths[i]-1]);
+            output.push_str(&format!("{:width$}{}", truncated.column(i)," ".repeat(SPACE), width=widths[i]));
+        } else {
+            output.push_str(&format!("{:width$}{}", cell.column(i)," ".repeat(SPACE), width=widths[i]));
+        }
+    }
+    output.push_str("\n");
+    output
+}
+
+fn next_columns_segment(
+    start_index: usize,
+    max_width: usize,
+    col_widths: &Vec<usize>
+) -> usize {
+    let mut current_width = 0;
+    for (i, &width) in col_widths.iter().enumerate().skip(start_index) {
+        current_width += width + SPACE;
+        if current_width > max_width {
+            return i - 1;
+        }
+    }
+    col_widths.len()-1
+}
+
+pub fn get_column_widths(
+    table: &Vec<Vec<&str>>,
+    column_width:usize
+) -> Vec<usize> {
+    let mut max_lengths: Vec<usize> = vec![0; table[0].len()];
+    for row in table {
+        for (i, cell) in row.iter().enumerate() {
+            max_lengths[i] = min(max_lengths[i].max(cell.len()),column_width);
+        }
+    }
+    max_lengths
+}

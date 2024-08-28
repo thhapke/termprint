@@ -50,13 +50,13 @@ fn main() {
 // tp::print_index2rgb();
 
     let table = vec![
-        vec!["Name", "Age", "City", "Country", "Street", "Profession", "Phone"],
+        vec!["Name", "Age", "City", "Country of residence", "Street", "Professional Carreer", "Phone"],
         vec!["Alice", "30", "New York", "USA", "123 Main St", "Engineer", "555-1234"],
         vec!["Bob", "25", "Los Angeles", "USA", "456 Elm St", "Teacher", "555-5678"],
         vec!["Charlie", "35", "Chicago", "USA", "789 Oak St", "Doctor", "555-9012"],
     ];
     
-    tp::print_table(table, true, Some("Table"));
+    tp::print_table(table, true, Some("Table"),Some(10));
 
     let mut map = HashMap::new();
     map.insert("key1", "value1");
