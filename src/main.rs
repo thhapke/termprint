@@ -3,7 +3,11 @@ use std::collections::HashMap;
 
 use serde::Serialize;
 
-use termprint::{self as tp, MAX_WIDTH};
+use termprint as tp;
+
+mod request_ext;
+
+use request_ext::{response_to_hashmap, request_to_hashmap, HttpMethod};
 
 fn main() {
 

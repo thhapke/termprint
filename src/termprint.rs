@@ -8,7 +8,13 @@ use time::OffsetDateTime;
 
 use serde_json::Value;
 
-use termsize::{self, Size};
+use reqwest::{Request, Response};
+
+use termsize;
+
+use crate::request_ext::{response_to_hashmap, request_to_hashmap,headers_to_hashmap};
+
+pub use crate::request_ext::HttpMethod;
 
 pub const LONG: usize = 120;
 pub const MEDIUM: usize = 80;
@@ -552,12 +558,9 @@ pub fn print_hashmap<K: std::fmt::Display, V: std::fmt::Display>(
     print!("{}", str_hashmap(map, title));
 }
 
-pub fn write_hashmap<K: std::fmt::Display, V: std::fmt::Display>(
-    f: &mut fmt::Formatter,
-    map: &HashMap<K, V>,
-    title: Option<&str>,
-) {
-    writeln!(f, "{}", str_hashmap(map, title));
+pub fn write_hashmap<K: std::fmt::Display,V: std::fmt::Display>(
+    f: &mut fmt::Formatter,map: &HashMap<K,V>, title: Option<&str>) {
+    let _ = writeln!(f,"{}",str_hashmap(map,title));
 }
 
 // In construction
@@ -848,4 +851,19 @@ pub fn get_column_widths(table: &Vec<Vec<&str>>, column_width: usize) -> Vec<usi
         }
     }
     max_lengths
+}
+
+pub fn print_request(request: &Request) {
+    let req_map = request_to_hashmap(request);
+    print_hashmap(&req_map, Some("Request"));
+}
+
+pub fn print_response(method: HttpMethod,response: &Response) {
+    let req_map = response_to_hashmap(method, response);
+    print_hashmap(&req_map, Some("Response"));
+}
+
+pub fn print_headers(headers: &reqwest::header::HeaderMap) {
+    let headers_map = headers_to_hashmap(headers);
+    print_hashmap(&headers_map, Some("Headers"));
 }
