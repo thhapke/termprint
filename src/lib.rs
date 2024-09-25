@@ -1,6 +1,8 @@
 mod termprint;
 pub use termprint::*;
 
+mod request_ext;
+
 // pub mod graph;
 
 #[cfg(test)]
