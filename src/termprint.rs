@@ -576,7 +576,7 @@ pub fn print_vec_struct<T: serde::Serialize>(title: &str, vec: &Vec<T>) {
     println!();
     print_title(&title);
     println!();
-    print_table(table,true,None,None);
+    print_table(table,true,None,Some(30));
 }
 
 pub fn print_start_program(program_name: &str) -> OffsetDateTime {
