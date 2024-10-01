@@ -1,5 +1,4 @@
-use core::num;
-use std::cmp::{max, min};
+use std::cmp::min;
 use std::fmt;
 
 use colored::{Color, ColoredString, Colorize};
