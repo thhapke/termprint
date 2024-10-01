@@ -10,9 +10,9 @@ use serde_json::Value;
 
 use reqwest::{Request, Response};
 
-use termsize;
+use termsize::Size;
 
-use crate::request_ext::{response_to_hashmap, request_to_hashmap,headers_to_hashmap};
+use crate::request_ext::{headers_to_hashmap, request_to_hashmap, response_to_hashmap};
 
 pub use crate::request_ext::HttpMethod;
 
@@ -558,9 +558,12 @@ pub fn print_hashmap<K: std::fmt::Display, V: std::fmt::Display>(
     print!("{}", str_hashmap(map, title));
 }
 
-pub fn write_hashmap<K: std::fmt::Display,V: std::fmt::Display>(
-    f: &mut fmt::Formatter,map: &HashMap<K,V>, title: Option<&str>) {
-    let _ = writeln!(f,"{}",str_hashmap(map,title));
+pub fn write_hashmap<K: std::fmt::Display, V: std::fmt::Display>(
+    f: &mut fmt::Formatter,
+    map: &HashMap<K, V>,
+    title: Option<&str>,
+) {
+    let _ = writeln!(f, "{}", str_hashmap(map, title));
 }
 
 // In construction
@@ -657,7 +660,7 @@ pub fn print_vec_struct<T: serde::Serialize>(title: &str, vec: &Vec<T>) {
     println!();
     print_title(&title);
     println!();
-    print_table(table,true,None,Some(30));
+    print_table(table, true, None, Some(30));
 }
 
 pub fn print_start_program(program_name: &str) -> OffsetDateTime {
@@ -858,7 +861,7 @@ pub fn print_request(request: &Request) {
     print_hashmap(&req_map, Some("Request"));
 }
 
-pub fn print_response(method: HttpMethod,response: &Response) {
+pub fn print_response(method: HttpMethod, response: &Response) {
     let req_map = response_to_hashmap(method, response);
     print_hashmap(&req_map, Some("Response"));
 }

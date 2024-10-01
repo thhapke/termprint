@@ -1,6 +1,5 @@
-
-use std::collections::HashMap;
 use reqwest::Request;
+use std::collections::HashMap;
 
 pub enum HttpMethod {
     GET,
@@ -23,7 +22,6 @@ impl HttpMethod {
         self.as_str().to_string()
     }
 }
-
 
 pub fn response_to_hashmap(
     method: HttpMethod,
@@ -56,4 +54,3 @@ pub fn request_to_hashmap(request: &Request) -> HashMap<String, String> {
     }
     map_req
 }
-
