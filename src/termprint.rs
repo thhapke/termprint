@@ -7,7 +7,7 @@ use time::OffsetDateTime;
 
 use serde_json::Value;
 
-use reqwest::{Request, Response};
+use reqwest::{header::HeaderMap, Request, Response};
 
 use termsize::Size;
 
@@ -856,7 +856,8 @@ pub fn get_column_widths(table: &Vec<Vec<&str>>, column_width: usize) -> Vec<usi
 }
 
 pub fn print_request(request: &Request) {
-    let req_map = request_to_hashmap(request);
+    let mut req_map = request_to_hashmap(request);
+    req_map.extend(headers_to_hashmap(request.headers()));
     print_hashmap(&req_map, Some("Request"));
 }
 
