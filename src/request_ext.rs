@@ -50,7 +50,11 @@ pub fn request_to_hashmap(request: &Request) -> HashMap<String, String> {
     map_req.insert("Method".to_string(), request.method().to_string());
     map_req.insert("URL".to_string(), request.url().to_string());
     for (key, value) in request.headers() {
-        map_req.insert(key.to_string(), value.to_str().unwrap().to_string());
+        if key.as_str().eq_ignore_ascii_case("authorization") {
+            map_req.insert(key.to_string(), "********".to_string());
+        } else {
+            map_req.insert(key.to_string(), value.to_str().unwrap().to_string());
+        }
     }
     map_req
 }
