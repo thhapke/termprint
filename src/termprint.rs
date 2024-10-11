@@ -33,6 +33,7 @@ trait ColoredItem {
     fn cwarning(&self) -> ColoredString;
     fn citem(&self) -> ColoredString;
     fn cline(&self) -> ColoredString;
+    fn cbullet(&self) -> ColoredString;
     fn column(&self, index: usize) -> ColoredString;
 }
 
@@ -92,6 +93,10 @@ impl ColoredItem for &str {
         self.bright_blue().bold()
     }
 
+    fn cbullet(&self) -> ColoredString {
+        self.bright_blue().bold()
+    }
+
     fn column(&self, index: usize) -> ColoredString {
         let col_color = COLUMN_COLORS[index % COLUMN_COLORS.len()];
         self.color(col_color)
@@ -125,6 +130,10 @@ impl ColoredItem for String {
     }
 
     fn cline(&self) -> ColoredString {
+        self.bright_blue().bold()
+    }
+
+    fn cbullet(&self) -> ColoredString {
         self.bright_blue().bold()
     }
 
@@ -164,6 +173,10 @@ impl ColoredItem for &str {
         self.truecolor(51, 102, 255)
     }
 
+    fn cbullet(&self) -> ColoredString {
+        self.truecolor(51, 102, 255)
+    }
+
     fn column(&self, index: usize) -> ColoredString {
         let color = COLUMN_COLORS[index % COLUMN_COLORS.len()];
         self.truecolor(color.0, color.1, color.2)
@@ -197,6 +210,10 @@ impl ColoredItem for &str {
     }
 
     fn cline(&self) -> ColoredString {
+        self.truecolor(51, 102, 255)
+    }
+
+    fn cbullet(&self) -> ColoredString {
         self.truecolor(51, 102, 255)
     }
 
@@ -235,6 +252,11 @@ impl ColoredItem for &str {
     fn cline(&self) -> ColoredString {
         self.white()
     }
+
+    fn cbullet(&self) -> ColoredString {
+        self.truecolor(51, 102, 255)
+    }
+
     fn column(&self, index: usize) -> ColoredString {
         let color = COLUMN_COLORS[index % COLUMN_MONO_COLORS.len()];
         self.truecolor(color.0, color.1, color.2)
@@ -510,6 +532,21 @@ pub fn str_key_value(key: &str, value: &str, max_klen: usize, max_vlen: usize) -
         }
     }
     output
+}
+
+pub fn str_vec(vec: &Vec<&str>, title: Option<&str>) -> String {
+    let mut output = String::new();
+    if let Some(t) = title {
+        output.push_str(&str_title(t));
+    }
+    for value in vec {
+        output.push_str(&format!(" {} {}\n", "-".cbullet(), value.cvar()));
+    }
+    output
+}
+
+pub fn print_vec(vec: &Vec<&str>, title: Option<&str>) {
+    println!("{}", str_vec(vec, title));
 }
 
 pub fn str_hashmap<K: std::fmt::Display, V: std::fmt::Display>(

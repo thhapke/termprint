@@ -1,5 +1,5 @@
 mod termprint;
-use std::collections::HashMap;
+use std::{collections::HashMap, vec};
 
 use serde::Serialize;
 
@@ -113,6 +113,9 @@ fn main() {
     let vec_persons = vec![person, person2];
 
     tp::print_vec_struct("Persons Struct", &vec_persons);
+
+    let vec_str = vec!["Alice", "Bob", "Charlie"];
+    tp::print_vec(&vec_str, Some("Vec"));
 
     tp::print_end_program("Test termprint", start);
 }
