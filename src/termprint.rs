@@ -592,12 +592,8 @@ pub fn str_struct<T: serde::Serialize>(title: &str, obj: &T) -> String {
         output.push_str(&line(line_len));
 
         for (key, value) in map {
-            output.push_str(&str_key_value(
-                &key.to_string(),
-                &value.to_string(),
-                max_k,
-                max_v,
-            ));
+            let value_str = value.to_string().trim_end_matches('"').to_string();
+            output.push_str(&str_key_value(&key.to_string(), &value_str, max_k, max_v));
         }
 
         output.push_str(&line(line_len));
