@@ -546,7 +546,7 @@ pub fn str_vec(vec: &Vec<&str>, title: Option<&str>) -> String {
 }
 
 pub fn print_vec(vec: &Vec<&str>, title: Option<&str>) {
-    println!("{}", str_vec(vec, title));
+    println!("\n{}", str_vec(vec, title));
 }
 
 pub fn str_hashmap<K: std::fmt::Display, V: std::fmt::Display>(
@@ -629,7 +629,7 @@ pub fn str_struct<T: serde::Serialize>(title: &str, obj: &T) -> String {
         output.push_str(&line(line_len));
 
         for (key, value) in map {
-            let value_str = value.to_string().trim_end_matches('"').to_string();
+            let value_str = value.to_string().trim_matches('"').to_string();
             output.push_str(&str_key_value(&key.to_string(), &value_str, max_k, max_v));
         }
 
